@@ -137,6 +137,43 @@ def search():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/analyze', methods=['POST', 'OPTIONS'])
+@cross_origin(origins="*")
+def analyze_patient():
+    if request.method == "OPTIONS":
+        return make_response("", 204)
 
-# NO app.run() — Cloud Run uses Gunicorn
+    data = request.get_json()
+    patient_id = data.get("patient_id")
+    first_name = data.get("first_name")
+    last_name = data.get("last_name")
+    birth_date = data.get("birthDate")
+    gender = data.get("sex")
+
+    if not (first_name and last_name and birth_date and gender and patient_id):
+        return jsonify({"error": "Missing required patient fields"}), 400
+
+    # Get the X-ray image from database
+    image_data = get_patient_image_by_fields(first_name, last_name, gender.lower(), birth_date)
+    if not image_data:
+        return jsonify({"error": "No X-ray image found for this patient"}), 404
+
+    # Convert to Base64 string
+    image_base64 = base64.b64encode(image_data).decode("utf-8")
+
+    # Prepares request for AI endpoint
+    analysis_request = {
+        "patient_id": patient_id,
+        "patient_first_name": first_name,
+        "image": image_base64
+    }
+
+    try:
+        response = requests.post(ANALYSIS_APP_URL, json=analysis_request, headers={"Content-Type": "application/json"})
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"AI analysis request failed: {str(e)}"}), 500
+
+
 
