@@ -7,6 +7,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 FHIR_BASE_URL = 'https://hapi.fhir.org/baseR4'
+ANALYSIS_APP_URL = "http://3.93.240.12:5000/api/predictNeumonia"
 
 @app.after_request
 def add_cors_headers(response):
@@ -174,6 +175,7 @@ def analyze_patient():
         return jsonify(response.json())
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"AI analysis request failed: {str(e)}"}), 500
+
 
 
 
